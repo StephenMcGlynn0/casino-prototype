@@ -1,0 +1,38 @@
+# Node modules
+node_modules/
+
+# Hardhat build output
+artifacts/
+cache/
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env.development
+.env.production
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# TypeScript build output
+dist/
+out/
+
+# Temporary files
+*.log
+*.tmp
+
+# Hardhat broadcasts (deployment JSONs)
+broadcast/
+
