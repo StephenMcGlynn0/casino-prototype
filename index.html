@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>High-Low Game (Localhost)</title>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+
+<h2>🎴 Provably Fair High–Low Game</h2>
+
+<button onclick="connectWallet()">Connect Wallet</button>
+<p id="wallet"></p>
+
+<hr>
+
+<p>Current Card: <span id="currentCard">-</span></p>
+
+<button onclick="guess(true)">Guess Higher</button>
+<button onclick="guess(false)">Guess Lower</button>
+
+<hr>
+
+<h3>Result</h3>
+<p id="result"></p>
+
+<h3>Fairness Verification</h3>
+<p id="fairness"></p>
+
+<script>
+let provider;
+let signer;
+let contract;
+let roundId;
+let seed;
+let commitment;
+
+const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Update with your deployed contract address
+
+const abi = [
+  "function createRound(address player, uint8 currentCard, bytes32 commitment) returns (uint256)",
+  "function submitGuess(uint256 roundId, bool guessHigher)",
+  "function revealSeed(uint256 roundId, uint256 seed)",
+  "function getRound(uint256 roundId) view returns (address,uint8,bool,bool,bool,bytes32,uint256,uint8,uint8)",
+  "function nextRoundId() view returns (uint256)"
+];
+
+async function ensureHardhatNetwork() {
+  const hardhatChainIdHex = "0x7a69"; // 31337
+
+  // Request switch
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: hardhatChainIdHex }],
+    });
+  } catch (switchError) {
+    // If the chain is not added yet, add it
+    if (switchError.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: hardhatChainIdHex,
+          chainName: "Hardhat Local",
+          rpcUrls: ["http://127.0.0.1:8545"],
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        }],
+      });
+    } else {
+      throw switchError;
+    }
+  }
+}
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    alert("MetaMask not found. Install it first.");
+    return;
+  }
+
+  // FORCE the correct chain
+  await ensureHardhatNetwork();
+
+  provider = new ethers.BrowserProvider(window.ethereum);
+
+  const network = await provider.getNetwork();
+  console.log("chainId:", network.chainId.toString());
+
+  if (network.chainId !== 31337n) {
+    alert("You are NOT on Hardhat Local (31337). Switch MetaMask network and retry.");
+    return;
+  }
+
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner();
+
+  contract = new ethers.Contract(contractAddress, abi, signer);
+
+  document.getElementById("wallet").innerText =
+    "Connected: " + await signer.getAddress();
+
+  startRound();
+}
+
+async function startRound() {
+  const currentCard = Math.floor(Math.random() * 13) + 1;
+  document.getElementById("currentCard").innerText = currentCard;
+
+  seed = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32))
+    .reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), ''));
+
+  commitment = ethers.keccak256(
+    ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [seed])
+  );
+
+  const tx = await contract.createRound(
+    await signer.getAddress(),
+    currentCard,
+    commitment
+  );
+  await tx.wait();
+
+  roundId = (await contract.nextRoundId()) - 1n;
+}
+
+async function guess(isHigher) {
+  const guessTx = await contract.submitGuess(roundId, isHigher);
+  await guessTx.wait();
+
+  const revealTx = await contract.revealSeed(roundId, seed);
+  await revealTx.wait();
+
+  const round = await contract.getRound(roundId);
+
+  const nextCard = Number(round[7]);
+  const playerWon = round[4];
+  const commitmentOnChain = round[5];
+  const seedOnChain = round[6];
+
+  document.getElementById("result").innerText =
+    "Next Card: " + nextCard +
+    " → " + (playerWon ? "🎉 YOU WON" : "💀 YOU LOST");
+
+  const recomputed = ethers.keccak256(
+    ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [seedOnChain])
+  );
+
+  const nextCardLocal = Number((BigInt(recomputed) % 13n) + 1n);
+
+  document.getElementById("fairness").innerText =
+    "Commitment match: " + (recomputed === commitmentOnChain) +
+    " | Card match: " + (nextCardLocal === nextCard);
+}
+</script>
+
+</body>
+</html>
