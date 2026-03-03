@@ -96,8 +96,24 @@ contract HighLowGame {
         bytes32 computed = keccak256(abi.encodePacked(seed));
         require(computed == r.commitment, "Commitment mismatch");
 
-        // Derive next card from the seed
-        uint8 nextCard = uint8((uint256(computed) % 13) + 1);
+        // Derive next card from the seed, matching a real 52-card deck with 1 card revealed:
+        // - 3 cards remain of the same rank (tie)
+        // - 4 cards remain for each other rank
+        uint256 roll = uint256(computed) % 51;
+
+        uint8 nextCard;
+        if (roll < 3) {
+            // 3/51 chance: tie (same rank)
+            nextCard = r.currentCard;
+        } else {
+            // remaining 48 outcomes split into 12 ranks * 4 cards each
+            uint256 idx = (roll - 3) / 4; // 0..11 => which "other rank"
+            uint8 v = r.currentCard;
+
+            // map idx to actual rank in 1..13 excluding v
+            if (idx < (v - 1)) nextCard = uint8(idx + 1);
+            else nextCard = uint8(idx + 2); // skip v
+        }
         r.nextCard = nextCard;
         r.seed = seed;
 
