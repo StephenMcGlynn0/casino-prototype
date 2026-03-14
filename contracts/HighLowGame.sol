@@ -4,28 +4,47 @@ pragma solidity ^0.8.20;
 /// @title Provably-fair High–Low card game using commit–reveal
 /// @notice Prototype only – no real money, just fairness demo
 contract HighLowGame {
-    enum RoundState { None, Committed, Guessed, Revealed }
-
-    struct Round {
-        address player;          // who is playing this round
-        uint8 currentCard;       // visible card (1–13)
-        bool guessHigher;        // player's guess
-        bool playerGuessed;      // has the player guessed yet?
-        bool playerWon;          // result after reveal
-        bytes32 commitment;      // hash of secret seed
-        uint256 seed;            // revealed seed (0 until reveal)
-        uint8 nextCard;          // derived next card (1–13)
-        RoundState state;        // lifecycle state
+    enum RoundState {
+        None,
+        Committed,
+        Guessed,
+        Revealed
     }
 
-    address public dealer;       // casino / operator address (deployer)
-    uint256 public nextRoundId;  // auto-incrementing round ID
+    struct Round {
+        address player;
+        uint8 currentCard;
+        bool guessHigher;
+        bool playerGuessed;
+        bool playerWon;
+        bool push;
+        bytes32 commitment;
+        uint256 seed;
+        uint8 nextCard;
+        RoundState state;
+    }
+
+    address public dealer; // casino / operator address (deployer)
+    uint256 public nextRoundId; // auto-incrementing round ID
 
     mapping(uint256 => Round) public rounds;
 
-    event RoundCommitted(uint256 indexed roundId, address indexed player, uint8 currentCard);
-    event PlayerGuessed(uint256 indexed roundId, address indexed player, bool guessHigher);
-    event RoundRevealed(uint256 indexed roundId, uint8 nextCard, bool playerWon);
+    event RoundCommitted(
+        uint256 indexed roundId,
+        address indexed player,
+        uint8 currentCard
+    );
+    event PlayerGuessed(
+        uint256 indexed roundId,
+        address indexed player,
+        bool guessHigher
+    );
+    event RoundRevealed(
+        uint256 indexed roundId,
+        uint8 nextCard,
+        bool playerWon,
+        bool push
+    );
 
     modifier onlyDealer() {
         require(msg.sender == dealer, "Only dealer can call this");
@@ -33,7 +52,10 @@ contract HighLowGame {
     }
 
     modifier onlyPlayer(uint256 roundId) {
-        require(msg.sender == rounds[roundId].player, "Only round player can call this");
+        require(
+            msg.sender == rounds[roundId].player,
+            "Only round player can call this"
+        );
         _;
     }
 
@@ -51,7 +73,10 @@ contract HighLowGame {
         uint8 currentCard,
         bytes32 commitment
     ) external onlyDealer returns (uint256 roundId) {
-        require(currentCard >= 1 && currentCard <= 13, "Current card out of range");
+        require(
+            currentCard >= 1 && currentCard <= 13,
+            "Current card out of range"
+        );
         require(player != address(0), "Invalid player address");
         require(commitment != bytes32(0), "Invalid commitment");
 
@@ -68,12 +93,15 @@ contract HighLowGame {
     }
 
     /// @notice Player submits their guess: will the next card be higher than the current?
-    function submitGuess(uint256 roundId, bool guessHigher)
-        external
-        onlyPlayer(roundId)
-    {
+    function submitGuess(
+        uint256 roundId,
+        bool guessHigher
+    ) external onlyPlayer(roundId) {
         Round storage r = rounds[roundId];
-        require(r.state == RoundState.Committed, "Round not in committed state");
+        require(
+            r.state == RoundState.Committed,
+            "Round not in committed state"
+        );
         require(!r.playerGuessed, "Already guessed");
 
         r.guessHigher = guessHigher;
@@ -118,23 +146,28 @@ contract HighLowGame {
         r.seed = seed;
 
         // Decide winner
-        bool playerWon;
+        bool playerWon = false;
+        bool push = false;
+
         if (nextCard == r.currentCard) {
-            // For simplicity, equal card = automatic loss
-            playerWon = false;
+            push = true;
         } else if (r.guessHigher) {
             playerWon = nextCard > r.currentCard;
         } else {
             playerWon = nextCard < r.currentCard;
         }
+
         r.playerWon = playerWon;
+        r.push = push;
         r.state = RoundState.Revealed;
 
-        emit RoundRevealed(roundId, nextCard, playerWon);
+        emit RoundRevealed(roundId, nextCard, playerWon, push);
     }
 
     /// @notice Convenience view to get all important round info
-    function getRound(uint256 roundId)
+    function getRound(
+        uint256 roundId
+    )
         external
         view
         returns (
@@ -143,6 +176,7 @@ contract HighLowGame {
             bool guessHigher,
             bool playerGuessed,
             bool playerWon,
+            bool push,
             bytes32 commitment,
             uint256 seed,
             uint8 nextCard,
@@ -156,6 +190,7 @@ contract HighLowGame {
             r.guessHigher,
             r.playerGuessed,
             r.playerWon,
+            r.push,
             r.commitment,
             r.seed,
             r.nextCard,

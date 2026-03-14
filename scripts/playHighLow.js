@@ -7,6 +7,19 @@ const fs = require("fs");
 const deployment = JSON.parse(fs.readFileSync("./deployment.json"));
 const contractAddress = deployment.address;
 
+function deriveNextCardLikeContract(currentCard, hashHex) {
+  const computed = BigInt(hashHex);
+  const roll = computed % 51n;
+
+  if (roll < 3n) return currentCard;
+
+  const idx = (roll - 3n) / 4n; // 0..11
+  const v = BigInt(currentCard);
+
+  if (idx < (v - 1n)) return Number(idx + 1n);
+  return Number(idx + 2n);
+}
+
 // Simple helper to ask a question in the console
 function askQuestion(query) {
   const rl = readline.createInterface({
@@ -84,10 +97,11 @@ async function main() {
   const guessHigherOnChain = round[2];
   const playerGuessed = round[3];
   const playerWon = round[4];
-  const commitmentOnChain = round[5];
-  const seedOnChain = round[6];
-  const nextCardOnChain = Number(round[7]);
-  const state = round[8]; // 3 = Revealed
+  const push = round[5];
+  const commitmentOnChain = round[6];
+  const seedOnChain = round[7];
+  const nextCardOnChain = Number(round[8]);
+  const state = round[9];
 
   console.log("--------------------------------------------------");
   console.log(`Round ${roundId} on-chain data:`);
@@ -113,7 +127,7 @@ async function main() {
     recomputed === commitmentOnChain ? "YES ✅" : "NO ❌"
   );
 
-  const nextCardLocal = Number((BigInt(recomputed) % 13n) + 1n);
+  const nextCardLocal = deriveNextCardLikeContract(current, recomputed);
   console.log(" Recomputed next card:", nextCardLocal);
   console.log(" On-chain next card:  ", nextCardOnChain);
   console.log(
@@ -122,7 +136,9 @@ async function main() {
   );
 
   console.log("--------------------------------------------------");
-  if (playerWon) {
+  if (push) {
+    console.log("🤝 PUSH, same card, stake returned.");
+  } else if (playerWon) {
     console.log("🎉 You WON this round!");
   } else {
     console.log("💀 You LOST this round!");

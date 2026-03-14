@@ -5,12 +5,14 @@ const fs = require("fs");
 const deployment = JSON.parse(fs.readFileSync("./deployment.json"));
 const contractAddress = deployment.address;
 
-function theoreticalWinProb(v) {
-  // report formula: 4*max(v-1, 13-v)/51
+function theoreticalRawWinProb(v) {
   return (4 * Math.max(v - 1, 13 - v)) / 51;
 }
 
-// Optimal strategy under your report rules (ties = loss):
+function theoreticalConditionalWinProb(v) {
+  return Math.max(v - 1, 13 - v) / 12;
+}
+
 // choose the larger side: higher if v<=7, lower if v>=8. At 7 either is same.
 function optimalGuessHigher(v) {
   if (v <= 7) return true;  // guess higher
@@ -21,7 +23,7 @@ async function main() {
   const [dealer, player] = await hre.ethers.getSigners();
   const game = await hre.ethers.getContractAt("HighLowGame", contractAddress);
 
-  const TOTAL_GAMES = 50000;
+  const TOTAL_GAMES = 10;
 
   // stats[v] for v=1..13
   const stats = Array.from({ length: 14 }, () => ({
@@ -59,14 +61,15 @@ async function main() {
 
     const round = await game.getRound(roundId);
 
-    const nextCard = Number(round[7]);
+    const nextCard = Number(round[8]);
     const playerWon = round[4];
 
     // record stats
     stats[currentCard].total++;
-    if (nextCard === currentCard) {
+    const push = round[5];
+
+    if (push) {
       stats[currentCard].ties++;
-      stats[currentCard].losses++; // ties are losses in your rules
     } else if (playerWon) {
       stats[currentCard].wins++;
     } else {
@@ -91,8 +94,11 @@ async function main() {
     totalLosses += s.losses;
     totalTies += s.ties;
 
-    const empirical = s.total ? s.wins / s.total : 0;
-    const theory = theoreticalWinProb(v);
+    const empiricalRaw = s.total ? s.wins / s.total : 0;
+    const empiricalCond = (s.wins + s.losses) ? s.wins / (s.wins + s.losses) : 0;
+
+    const theoryRaw = theoreticalRawWinProb(v);
+    const theoryCond = theoreticalConditionalWinProb(v);
 
     console.log(
       `Upcard ${v.toString().padStart(2, " ")} | ` +
@@ -100,20 +106,36 @@ async function main() {
       `W=${s.wins.toString().padStart(5, " ")} | ` +
       `L=${s.losses.toString().padStart(5, " ")} | ` +
       `T=${s.ties.toString().padStart(5, " ")} | ` +
-      `Emp P(win|v)=${empirical.toFixed(4)} | ` +
-      `Theory=${theory.toFixed(4)}`
+      `EmpRaw=${empiricalRaw.toFixed(4)} | ` +
+      `EmpCond=${empiricalCond.toFixed(4)} | ` +
+      `TheoryRaw=${theoryRaw.toFixed(4)} | ` +
+      `TheoryCond=${theoryCond.toFixed(4)}`
     );
   }
 
-  const overallEmp = totalWins / (totalWins + totalLosses);
-  const overallTheory = 160 / 221; // your report result
+  const overallEmpRaw = totalWins / (totalWins + totalLosses + totalTies);
+  const overallEmpCond = totalWins / (totalWins + totalLosses);
+
+  let overallTheoryRaw = 0;
+  let overallTheoryCond = 0;
+
+  for (let v = 1; v <= 13; v++) {
+    overallTheoryRaw += theoreticalRawWinProb(v);
+    overallTheoryCond += theoreticalConditionalWinProb(v);
+  }
+
+  overallTheoryRaw /= 13;
+  overallTheoryCond /= 13;
 
   console.log("\n----------------- OVERALL -----------------");
   console.log(`Total wins:   ${totalWins}`);
   console.log(`Total losses: ${totalLosses}`);
-  console.log(`Total ties:   ${totalTies} (counted as losses)`);
-  console.log(`Empirical P(win): ${overallEmp.toFixed(4)}`);
-  console.log(`Theory P(win):    ${overallTheory.toFixed(4)} (160/221)`);
+  console.log(`Total ties:   ${totalTies} (pushes)`);
+
+  console.log(`Empirical Raw P(win):   ${overallEmpRaw.toFixed(4)}`);
+  console.log(`Empirical Cond P(win):  ${overallEmpCond.toFixed(4)}`);
+  console.log(`Theory Raw P(win):      ${overallTheoryRaw.toFixed(4)}`);
+  console.log(`Theory Cond P(win):     ${overallTheoryCond.toFixed(4)}`);
   console.log("===========================================\n");
 }
 
