@@ -20,10 +20,13 @@ function optimalGuessHigher(v) {
 }
 
 async function main() {
+  const TOTAL_GAMES = Number(process.env.TOTAL_GAMES || 50000);
+
+  console.log(`Running ${TOTAL_GAMES} simulations...\n`);
   const [dealer, player] = await hre.ethers.getSigners();
   const game = await hre.ethers.getContractAt("HighLowGame", contractAddress);
 
-  const TOTAL_GAMES = 10;
+
 
   // stats[v] for v=1..13
   const stats = Array.from({ length: 14 }, () => ({
