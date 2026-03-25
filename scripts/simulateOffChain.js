@@ -76,7 +76,8 @@ async function main() {
     `\nTime: ${secs.toFixed(2)}s (${Math.round(TOTAL_GAMES / secs).toLocaleString()} games/sec)`
   );
 
-  console.log("\n================= OFF-CHAIN RESULTS (FAST) =================");
+  console.log("\n================= 🎴 SIMULATION RESULTS =================");
+  console.log(`Mode: Off-chain (fast simulation)`);
   console.log(`Total games: ${TOTAL_GAMES}\n`);
 
   let totalWins = 0;
@@ -90,21 +91,23 @@ async function main() {
     totalTies += s.ties;
 
     const empiricalRaw = s.total ? s.wins / s.total : 0;
-    const empiricalCond = (s.wins + s.losses) ? s.wins / (s.wins + s.losses) : 0;
+    const empiricalCond = (s.wins + s.losses)
+      ? s.wins / (s.wins + s.losses)
+      : 0;
 
     const theoryRaw = theoreticalRawWinProb(v);
     const theoryCond = theoreticalConditionalWinProb(v);
 
+    const label = v.toString().padStart(2, " ");
+
     console.log(
-      `Upcard ${String(v).padStart(2)} | ` +
-      `N=${String(s.total).padStart(7)} | ` +
-      `W=${String(s.wins).padStart(7)} | ` +
-      `L=${String(s.losses).padStart(7)} | ` +
-      `T=${String(s.ties).padStart(7)} | ` +
-      `EmpRaw=${empiricalRaw.toFixed(4)} | ` +
-      `EmpCond=${empiricalCond.toFixed(4)} | ` +
-      `TheoryRaw=${theoryRaw.toFixed(4)} | ` +
-      `TheoryCond=${theoryCond.toFixed(4)}`
+      `${label} | Games=${s.total} | Wins=${s.wins} | Losses=${s.losses} | Pushes=${s.ties}`
+    );
+    console.log(
+      `     Win Rate(Not including pushes): ${empiricalCond.toFixed(4)} (Optimal Rate ${theoryCond.toFixed(4)})`
+    );
+    console.log(
+      `     Win Rate(Including pushes):  ${empiricalRaw.toFixed(4)} (Optimal Rate ${theoryRaw.toFixed(4)})\n`
     );
   }
 
@@ -122,15 +125,32 @@ async function main() {
   overallTheoryRaw /= 13;
   overallTheoryCond /= 13;
 
-  console.log("\n----------------- OVERALL -----------------");
-  console.log(`Total wins:   ${totalWins}`);
-  console.log(`Total losses: ${totalLosses}`);
-  console.log(`Total ties:   ${totalTies} (pushes)`);
-  console.log(`Empirical Raw P(win):   ${overallEmpRaw.toFixed(4)}`);
-  console.log(`Empirical Cond P(win):  ${overallEmpCond.toFixed(4)}`);
-  console.log(`Theory Raw P(win):      ${overallTheoryRaw.toFixed(4)}`);
-  console.log(`Theory Cond P(win):     ${overallTheoryCond.toFixed(4)}`);
-  console.log("===========================================\n");
+  const pushRate = totalTies / (totalWins + totalLosses + totalTies);
+
+  console.log("\n----------------- 📊 OVERALL -----------------\n");
+  console.log(`Total Games:       ${totalWins + totalLosses + totalTies}`);
+  console.log(`Wins:              ${totalWins}`);
+  console.log(`Losses:            ${totalLosses}`);
+  console.log(`Pushes:            ${totalTies}\n`);
+
+  console.log(
+    `Win Rate(Not including pushes): ${overallEmpCond.toFixed(4)} (Optimal Rate ${overallTheoryCond.toFixed(4)})`
+  );
+  console.log(
+    `Win Rate(Including pushes):        ${overallEmpRaw.toFixed(4)} (Optimal Rate ${overallTheoryRaw.toFixed(4)})`
+  );
+  console.log(
+    `Push Rate:           ${pushRate.toFixed(4)}`
+  );
+
+  const close =
+    Math.abs(overallEmpCond - overallTheoryCond) < 0.01 &&
+    Math.abs(overallEmpRaw - overallTheoryRaw) < 0.01;
+
+  console.log(
+    `\nStatus: ${close ? "✅ Matches theoretical expectations" : "⚠️ Deviates from theory"}`
+  );
+  console.log("================================================\n");
 }
 
 main().catch((e) => {
