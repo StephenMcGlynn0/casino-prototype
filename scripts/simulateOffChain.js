@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { ethers } = require("ethers");
+const { exportToCSV } = require("./utils/exportCSV");
 
 function theoreticalRawWinProb(v) {
   return (4 * Math.max(v - 1, 13 - v)) / 51;
@@ -151,6 +152,9 @@ async function main() {
     `\nStatus: ${close ? "✅ Matches theoretical expectations" : "⚠️ Deviates from theory"}`
   );
   console.log("================================================\n");
+
+  const filename = `results_${Date.now()}.csv`;
+  exportToCSV(stats, filename);
 }
 
 main().catch((e) => {

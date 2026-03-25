@@ -36,3 +36,6 @@ out/
 # Hardhat broadcasts (deployment JSONs)
 broadcast/
 
+*.csv
+output/
+
