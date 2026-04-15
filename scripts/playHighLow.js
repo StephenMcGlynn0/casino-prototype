@@ -7,8 +7,8 @@ const fs = require("fs");
 const deployment = JSON.parse(fs.readFileSync("./deployment.json"));
 const contractAddress = deployment.address;
 
-function deriveNextCardLikeContract(currentCard, hashHex) {
-  const computed = BigInt(hashHex);
+function deriveNextCardLikeContract(currentCard, seed) {
+  const computed = BigInt(seed);
   const roll = computed % 51n;
 
   if (roll < 3n) return currentCard;
@@ -127,7 +127,7 @@ async function main() {
     recomputed === commitmentOnChain ? "YES ✅" : "NO ❌"
   );
 
-  const nextCardLocal = deriveNextCardLikeContract(current, recomputed);
+  const nextCardLocal = deriveNextCardLikeContract(current, seedOnChain);
   console.log(" Recomputed next card:", nextCardLocal);
   console.log(" On-chain next card:  ", nextCardOnChain);
   console.log(

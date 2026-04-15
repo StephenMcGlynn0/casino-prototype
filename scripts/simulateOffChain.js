@@ -14,8 +14,8 @@ function optimalGuessHigher(v) {
   return v <= 7;
 }
 
-function deriveNextCardLikeContract(currentCard, computedHashHex) {
-  const computed = BigInt(computedHashHex); // bytes32 hex -> uint256
+function deriveNextCardLikeContract(currentCard, seed) {
+  const computed = BigInt(seed);
   const roll = computed % 51n;
 
   if (roll < 3n) return currentCard; // tie / push
@@ -48,11 +48,9 @@ async function main() {
     const currentCard = (Math.random() * 13 | 0) + 1;
 
     const seedBytes = crypto.randomBytes(32);
+    const seed = BigInt("0x" + seedBytes.toString("hex"));
 
-    // Mirrors keccak256 over a 32-byte seed value
-    const computedHash = ethers.keccak256(seedBytes);
-
-    const nextCard = deriveNextCardLikeContract(currentCard, computedHash);
+    const nextCard = deriveNextCardLikeContract(currentCard, seed);
     const guessHigher = optimalGuessHigher(currentCard);
     const won = playerWon(currentCard, nextCard, guessHigher);
 

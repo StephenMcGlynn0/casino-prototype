@@ -127,7 +127,7 @@ contract HighLowGame {
         // Derive next card from the seed, matching a real 52-card deck with 1 card revealed:
         // - 3 cards remain of the same rank (tie)
         // - 4 cards remain for each other rank
-        uint256 roll = uint256(computed) % 51;
+        uint256 roll = uint256(seed) % 51;
 
         uint8 nextCard;
         if (roll < 3) {
