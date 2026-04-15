@@ -63,8 +63,7 @@ async function showMenu() {
     console.log("5. Simulate games (off-chain)");
     console.log("6. Show rounds");
     console.log("7. Hash seed");
-    console.log("8. Verify round");
-    console.log("9. Exit");
+    console.log("8. Exit");
     console.log("==============================\n");
 
     const choice = (await ask("Choose an option: ")).trim();

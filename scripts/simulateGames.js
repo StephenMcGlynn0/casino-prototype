@@ -6,7 +6,7 @@ const { exportToCSV } = require("./utils/exportCSV");
 const deployment = JSON.parse(fs.readFileSync("./deployment.json"));
 const contractAddress = deployment.address;
 
-const fs = require("fs");
+
 
 function theoreticalRawWinProb(v) {
   return (4 * Math.max(v - 1, 13 - v)) / 51;
