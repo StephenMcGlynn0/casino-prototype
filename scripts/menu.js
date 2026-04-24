@@ -61,9 +61,10 @@ async function showMenu() {
     console.log("3. Play game");
     console.log("4. Simulate games (on-chain)");
     console.log("5. Simulate games (off-chain)");
-    console.log("6. Show rounds");
-    console.log("7. Hash seed");
-    console.log("8. Exit");
+    console.log("6. Simulate games (biased)");
+    console.log("7. Show rounds");
+    console.log("8. Hash seed");
+    console.log("9. Exit");
     console.log("==============================\n");
 
     const choice = (await ask("Choose an option: ")).trim();
@@ -109,10 +110,25 @@ async function showMenu() {
         }
 
         case "6":
+            const biasedGames = await askQuestion(
+                "Number of biased off-chain games (default 1000000): "
+            );
+
+            const biasedTotal = biasedGames.trim() || "1000000";
+
+            console.log(`\n> node scripts/simulateOffChainBiased.js ${biasedTotal}\n`);
+
+            require("child_process").execSync(
+                `node scripts/simulateOffChainBiased.js ${biasedTotal}`,
+                { stdio: "inherit" }
+            );
+            break;
+
+        case "7":
             await runCommand("npx", ["hardhat", "run", "scripts/showRounds.js", "--network", "localhost"]);
             break;
 
-        case "7": {
+        case "8": {
             const seed = (await ask("Enter seed: ")).trim();
             if (seed) {
                 await runCommand("node", ["scripts/hashSeed.js", seed]);
@@ -122,7 +138,7 @@ async function showMenu() {
             break;
         }
 
-        case "8":
+        case "9":
             console.log("Exiting...");
             closeReadline();
             process.exit(0);
