@@ -109,20 +109,14 @@ async function showMenu() {
             break;
         }
 
-        case "6":
-            const biasedGames = await askQuestion(
-                "Number of biased off-chain games (default 1000000): "
-            );
+        case "6": {
+            const total = (await ask("Number of biased off-chain games (default 1000000): ")).trim();
 
-            const biasedTotal = biasedGames.trim() || "1000000";
+            const totalGames = total || "1000000";
 
-            console.log(`\n> node scripts/simulateOffChainBiased.js ${biasedTotal}\n`);
-
-            require("child_process").execSync(
-                `node scripts/simulateOffChainBiased.js ${biasedTotal}`,
-                { stdio: "inherit" }
-            );
+            await runCommand("node", ["scripts/simulateOffChainBiased.js", totalGames]);
             break;
+        }
 
         case "7":
             await runCommand("npx", ["hardhat", "run", "scripts/showRounds.js", "--network", "localhost"]);
